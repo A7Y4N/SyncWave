@@ -84,8 +84,8 @@
       const med = offs[offs.length >> 1];
       this.rtt = best[0].rtt;
       this.jitter = offs[offs.length - 1] - offs[0];
-      if (this.offset == null || Math.abs(med - this.offset) > 8) this.offset = med;
-      else this.offset += (med - this.offset) * 0.2;
+      if (this.offset == null || Math.abs(med - this.offset) > 50) this.offset = med;
+      else this.offset += (med - this.offset) * 0.1;
     },
   };
 
@@ -374,7 +374,7 @@
     if (mapPrev) {
       const proj = mapPrev.n0 + (cNow - mapPrev.c0) * STREAM_RATE;
       const d = n0 - proj;
-      if (Math.abs(d) < STREAM_RATE * 0.02) n0 = proj + d * 0.15;
+      if (Math.abs(d) < STREAM_RATE * 0.1) n0 = proj + d * 0.15;
     }
     mapPrev = { c0: cNow, n0 };
     if (isWorklet && node.port) {

@@ -75,28 +75,28 @@ class Room {
 
   resetTimeline() {
     this.pending = Buffer.alloc(0);
-    this.est = null;
-    this.estCount = 0;
+    this.timelineStartMs = null;
+    this.totalFrames = 0;
   }
 
   onPcm(buf, arrival) {
     this.pending = this.pending.length ? Buffer.concat([this.pending, buf]) : buf;
-    const framesEnd = this.totalFrames + Math.floor(this.pending.length / BYTES_PER_FRAME);
-    const raw = arrival - (framesEnd * 1000) / RATE;
-
-    if (this.est === null || Math.abs(raw - this.est) > 250) {
-      this.est = raw;
-      this.estCount = 1;
+    if (this.timelineStartMs === null) {
+      this.timelineStartMs = arrival;
+      this.totalFrames = 0;
     } else {
-      this.estCount++;
-      const alpha = Math.max(0.002, 1 / this.estCount);
-      this.est += (raw - this.est) * alpha;
+      // Guard against long pauses (> 600 ms) in live streaming: re-anchor gracefully
+      const expectedTime = this.timelineStartMs + (this.totalFrames * 1000) / RATE;
+      if (Math.abs(arrival - expectedTime) > 600) {
+        this.timelineStartMs = arrival - (this.totalFrames * 1000) / RATE;
+      }
     }
 
     while (this.pending.length >= CHUNK_BYTES) {
       const pcm = this.pending.subarray(0, CHUNK_BYTES);
       this.pending = this.pending.subarray(CHUNK_BYTES);
-      this.broadcastChunk(this.totalFrames, this.est + (this.totalFrames * 1000) / RATE, pcm);
+      const chunkServerTimeMs = this.timelineStartMs + (this.totalFrames * 1000) / RATE;
+      this.broadcastChunk(this.totalFrames, chunkServerTimeMs, pcm);
       this.totalFrames += CHUNK_FRAMES;
     }
   }
