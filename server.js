@@ -371,7 +371,20 @@ wss.on('connection', (ws, req) => {
 
   ws.on('message', (data, isBinary) => {
     const recv = now();
-    if (isBinary) return;
+    if (isBinary) {
+      // Live audio broadcast from client browser (tab / screen audio)
+      if (data.length > 4 && data[0] === 0x53 && data[1] === 0x57 && data[2] === 0x50 && data[3] === 0x43) {
+        if (room.source !== 'stream') {
+          room.stopSource();
+          room.resetTimeline();
+          room.source = 'stream';
+          room.playbackState = 'playing';
+          room.broadcastState();
+        }
+        room.onPcm(data.subarray(4), recv);
+      }
+      return;
+    }
     let m;
     try { m = JSON.parse(data); } catch { return; }
 

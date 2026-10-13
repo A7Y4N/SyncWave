@@ -125,8 +125,21 @@
             <span class="label">Audio Source</span>
             <div class="seg" id="sourceSeg">
               <button data-source="music" id="srcMusic" class="mac-only hidden">Mac System (Live)</button>
+              <button data-source="stream" id="srcStream">Share Tab Audio</button>
               <button data-source="file" id="srcFile" class="active">Audio File</button>
               <button data-source="clicks" id="srcClicks">Metronome</button>
+            </div>
+          </div>
+
+          <!-- Browser Tab / Audio Broadcast Section -->
+          <div id="streamSection" class="live-source-banner hidden">
+            <span class="live-pulse" id="streamPulse"></span>
+            <div style="flex: 1; text-align: left;">
+              <b id="streamTitle">Broadcast Live Audio</b>
+              <p class="hint" id="streamHint">Pick any browser tab (YouTube, Spotify Web, Apple Music) or system screen to stream live sound to all speakers without uploading files.</p>
+              <button id="toggleStreamBtn" class="cta" style="margin-top: 10px; padding: 8px 16px; font-size: 13px;" type="button">
+                <span id="streamBtnText">Start Audio Broadcast</span>
+              </button>
             </div>
           </div>
 

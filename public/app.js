@@ -571,6 +571,96 @@
     xhr.send(file);
   }
 
+  // ------------------------------------------------------------- Live Tab / Browser Audio Broadcast
+  let broadcastStream = null;
+  let broadcastCtx = null;
+  let broadcastNode = null;
+  let broadcastSource = null;
+
+  async function startTabAudioBroadcast() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      alert('Live audio sharing is supported in Google Chrome, Edge, and modern desktop browsers.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      });
+      const audioTracks = stream.getAudioTracks();
+      if (!audioTracks.length) {
+        stream.getTracks().forEach((t) => t.stop());
+        alert('No audio track selected! When Chrome opens the picker, make sure to check "Share audio" (or "Also share tab audio").');
+        return;
+      }
+      broadcastStream = stream;
+      broadcastCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: STREAM_RATE });
+      broadcastSource = broadcastCtx.createMediaStreamSource(stream);
+      broadcastNode = broadcastCtx.createScriptProcessor(2048, 2, 2);
+
+      broadcastNode.onaudioprocess = (e) => {
+        if (!ws || ws.readyState !== 1) return;
+        const left = e.inputBuffer.getChannelData(0);
+        const right = e.inputBuffer.getChannelData(1);
+        const n = left.length;
+        const buf = new ArrayBuffer(4 + n * 4);
+        const dv = new DataView(buf);
+        dv.setUint8(0, 0x53); dv.setUint8(1, 0x57); dv.setUint8(2, 0x50); dv.setUint8(3, 0x43);
+        let off = 4;
+        for (let i = 0; i < n; i++) {
+          const sL = Math.max(-1, Math.min(1, left[i]));
+          const sR = Math.max(-1, Math.min(1, right[i]));
+          dv.setInt16(off, sL < 0 ? sL * 32768 : sL * 32767, true);
+          dv.setInt16(off + 2, sR < 0 ? sR * 32768 : sR * 32767, true);
+          off += 4;
+        }
+        ws.send(buf);
+      };
+
+      broadcastSource.connect(broadcastNode);
+      broadcastNode.connect(broadcastCtx.destination);
+
+      audioTracks[0].onended = stopTabAudioBroadcast;
+
+      updateStreamButton(true);
+      send({ type: 'setGlobal', source: 'stream' });
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') console.error(err);
+      stopTabAudioBroadcast();
+    }
+  }
+
+  function stopTabAudioBroadcast() {
+    if (broadcastStream) {
+      broadcastStream.getTracks().forEach((t) => t.stop());
+      broadcastStream = null;
+    }
+    if (broadcastNode) {
+      broadcastNode.disconnect();
+      broadcastNode = null;
+    }
+    if (broadcastSource) {
+      broadcastSource.disconnect();
+      broadcastSource = null;
+    }
+    if (broadcastCtx) {
+      broadcastCtx.close().catch(() => {});
+      broadcastCtx = null;
+    }
+    updateStreamButton(false);
+  }
+
+  function updateStreamButton(active) {
+    const b = $('#toggleStreamBtn');
+    const txt = $('#streamBtnText');
+    if (txt) txt.textContent = active ? 'Stop Live Broadcast' : 'Start Audio Broadcast';
+    if (b) b.classList.toggle('bad', active);
+  }
+
   // ------------------------------------------------------------- join
   async function join() {
     const btn = $('#joinBtn');
@@ -667,15 +757,20 @@
 
     // Toggle source sections
     const macSec = $('#macLiveSection');
+    const streamSec = $('#streamSection');
     const fileSec = $('#fileSection');
     const clicksSec = $('#clicksSection');
     if (macSec) macSec.classList.toggle('hidden', group.source !== 'music' || !group.hasMacCapture);
+    if (streamSec) streamSec.classList.toggle('hidden', group.source !== 'stream');
     if (fileSec) fileSec.classList.toggle('hidden', group.source !== 'file');
     if (clicksSec) clicksSec.classList.toggle('hidden', group.source !== 'clicks');
 
     const djChip = $('#djChip');
     if (djChip) {
-      if (group.source === 'music') {
+      if (group.source === 'stream') {
+        djChip.textContent = 'Live Broadcast';
+        djChip.className = 'chip active';
+      } else if (group.source === 'music') {
         djChip.textContent = 'Mac Live';
         djChip.className = 'chip active';
       } else if (group.currentTrack && group.playbackState === 'playing') {
@@ -692,7 +787,9 @@
 
     const np = $('#nowPlayingText');
     if (np) {
-      if (group.source === 'music') {
+      if (group.source === 'stream') {
+        np.textContent = '🎙️ Broadcasting Live Tab / System Audio';
+      } else if (group.source === 'music') {
         np.textContent = '🍎 Streaming Mac System Output (Apple Music, YouTube, Spotify)';
       } else if (group.source === 'clicks') {
         np.textContent = '⚡ Metronome Calibration';
@@ -1011,7 +1108,19 @@
       syncControls();
     });
     bindSeg($('#roleSeg'), 'role', (r) => setDevice(myId, { role: r }));
-    bindSeg($('#sourceSeg'), 'source', (s) => send({ type: 'setGlobal', source: s }));
+    bindSeg($('#sourceSeg'), 'source', (s) => {
+      send({ type: 'setGlobal', source: s });
+      if (s === 'stream' && !broadcastStream) {
+        startTabAudioBroadcast();
+      } else if (s !== 'stream' && broadcastStream) {
+        stopTabAudioBroadcast();
+      }
+    });
+
+    $('#toggleStreamBtn')?.addEventListener('click', () => {
+      if (broadcastStream) stopTabAudioBroadcast();
+      else startTabAudioBroadcast();
+    });
 
     $('#joinBtn').addEventListener('click', join);
     $('#nameInput').addEventListener('change', (e) => {
