@@ -1,0 +1,14 @@
+{
+  "name": "syncwave",
+  "version": "0.1.0",
+  "description": "Play Apple Music (or any Mac audio) in sync across MacBook, iPhone and iPad over local Wi-Fi.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}

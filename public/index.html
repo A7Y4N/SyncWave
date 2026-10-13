@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="description" content="SyncWave — Turn any phone, tablet, and laptop into a synchronized multi-room sound system." />
+  <meta name="theme-color" content="#07060d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>SyncWave · Universal Multi-Room Sound</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="grain"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M3 16h3l3-8 4 16 4-20 4 18 3-10 2 4h3" fill="none" stroke="url(#lg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#7c6bff"/></linearGradient></defs></svg>
+      </div>
+      <div class="brand-text">
+        <h1>SyncWave</h1>
+        <span id="brandSub">Multi-Room Sound</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div id="roomPill" class="room-pill hidden" title="Click to share room QR">
+        <span class="room-tag">ROOM</span>
+        <span id="roomCodeText" class="room-code">MAIN</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 4h6v6H4zm2 2v2h2V6zm8-2h6v6h-6zm2 2v2h2V6zM4 14h6v6H4zm2 2v2h2v-2zm10-2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm0 2h2v2h-2z"/></svg>
+      </div>
+      <div id="connPill" class="pill"><i></i><span>Connecting…</span></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= JOIN / CREATE ROOM VIEW ================= -->
+    <section id="joinView" class="view">
+      <div class="card join-card">
+        <div class="join-orb" aria-hidden="true"><span></span><span></span><span></span></div>
+        <h2>Sync Your Speakers</h2>
+        <p class="muted">Connect phones, tablets, and laptops together to play music in perfect phase-accurate harmony.</p>
+
+        <div class="field">
+          <span class="label">Room Code</span>
+          <div class="room-input-row">
+            <input id="roomInput" type="text" maxlength="8" placeholder="e.g. PARTY1" autocomplete="off" autocorrect="off" autocapitalize="characters" />
+            <button id="genRoomBtn" class="ghost" type="button">New Room</button>
+          </div>
+          <p class="hint">Friends on different devices enter the same code to share sound.</p>
+        </div>
+
+        <label class="field">
+          <span class="label">This device</span>
+          <input id="nameInput" type="text" maxlength="32" autocomplete="off" />
+        </label>
+
+        <div class="field">
+          <span class="label">Channel Position</span>
+          <div class="seg" id="joinRoleSeg" role="radiogroup">
+            <button data-role="stereo" id="joinRoleStereo">Stereo</button>
+            <button data-role="left" id="joinRoleLeft">Left</button>
+            <button data-role="right" id="joinRoleRight">Right</button>
+            <button data-role="mono" id="joinRoleMono">Mono</button>
+          </div>
+        </div>
+
+        <div class="field mac-only hidden" id="joinSinkField">
+          <span class="label">Mac speaker output</span>
+          <select id="joinSinkSelect"><option value="">Allow access to list devices…</option></select>
+          <p class="hint">Pick <b>MacBook Speakers</b>, not BlackHole.</p>
+        </div>
+
+        <p id="joinError" class="error hidden"></p>
+
+        <button id="joinBtn" class="cta">
+          <span class="cta-glow"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          <span>Tap to Join Room</span>
+        </button>
+
+        <ul class="tips ios-only hidden">
+          <li>Keep this tab open while listening.</li>
+          <li>Turn the device's physical volume up!</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= PLAYER VIEW ================= -->
+    <section id="playerView" class="view hidden">
+      <div class="card hero">
+        <canvas id="viz" aria-label="Audio visualizer"></canvas>
+        <div class="hero-center">
+          <div id="roleBadge" class="role-badge">L&nbsp;R</div>
+          <div id="deviceTitle" class="device-title">Speaker</div>
+          <div id="nowPlayingText" class="now-playing-sub">Ready to play</div>
+          <div id="syncStatus" class="sync-status"><i></i><span>Syncing clocks…</span></div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><span class="m-label">Clock</span><span class="m-val" id="mClock">—</span></div>
+          <div class="metric"><span class="m-label">Lock</span><span class="m-val" id="mLock">—</span></div>
+          <div class="metric"><span class="m-label">Buffer</span><span class="m-val" id="mBuffer">—</span></div>
+          <div class="metric"><span class="m-label">Glitches</span><span class="m-val" id="mGlitch">0</span></div>
+        </div>
+        <button id="resumeBtn" class="resume hidden">Audio paused. Tap to resume.</button>
+      </div>
+
+      <div class="grid">
+        <!-- DJ Aux / Music Player Card -->
+        <div class="card dj-card">
+          <div class="card-head">
+            <h3>🎧 Room DJ & Music</h3>
+            <span class="chip" id="djChip">Pass the Aux</span>
+          </div>
+
+          <div class="field">
+            <span class="label">Audio Source</span>
+            <div class="seg" id="sourceSeg">
+              <button data-source="music" id="srcMusic" class="mac-only hidden">Mac System (Live)</button>
+              <button data-source="file" id="srcFile" class="active">Audio File</button>
+              <button data-source="clicks" id="srcClicks">Metronome</button>
+            </div>
+          </div>
+
+          <!-- Mac System Live Status -->
+          <div id="macLiveSection" class="live-source-banner mac-only hidden">
+            <span class="live-pulse"></span>
+            <div>
+              <b>Live Mac System Audio</b>
+              <p class="hint">Streaming all laptop sound (Apple Music, Spotify, YouTube) directly to all speakers. No file upload needed!</p>
+            </div>
+          </div>
+
+          <!-- Metronome Status -->
+          <div id="clicksSection" class="live-source-banner hidden">
+            <span class="live-pulse metro"></span>
+            <div>
+              <b>Acoustic Calibration Metronome</b>
+              <p class="hint">Broadcasting precision sync pulses across all devices.</p>
+            </div>
+          </div>
+
+          <!-- File Upload Section -->
+          <div id="fileSection" class="dj-upload-section">
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.wav,.flac,.aac" class="file-hidden-input" />
+              <div class="drop-content">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <div class="drop-text">
+                  <b>Choose or Drop Song</b>
+                  <span>MP3, M4A, WAV, FLAC from Files or Drive</span>
+                </div>
+              </div>
+            </div>
+            <div id="uploadProgress" class="upload-bar hidden"><div class="upload-fill"></div></div>
+          </div>
+
+          <div class="field">
+            <div class="row-label"><span class="label">Sync buffer</span><span class="val" id="delayVal">2.0 s</span></div>
+            <input type="range" id="delaySlider" min="300" max="5000" step="100" value="2000" />
+            <p class="hint">How far ahead audio is scheduled across the internet.</p>
+          </div>
+        </div>
+
+        <!-- Speaker Hardware Controls -->
+        <div class="card">
+          <div class="card-head"><h3>This Speaker</h3></div>
+
+          <div class="field">
+            <div class="row-label"><span class="label">Volume</span><span class="val" id="volVal">100%</span></div>
+            <input type="range" id="volSlider" min="0" max="200" value="100" />
+            <p class="hint">Adjust up to 200% to boost smaller speakers.</p>
+          </div>
+
+          <div class="field">
+            <div class="row-label"><span class="label">Fine sync</span><span class="val" id="offVal">0 ms</span></div>
+            <div class="stepper">
+              <button id="offMinus" aria-label="Play earlier">−</button>
+              <input type="range" id="offSlider" min="-200" max="200" step="1" value="0" />
+              <button id="offPlus" aria-label="Play later">+</button>
+            </div>
+            <p class="hint">+ makes this device play later, − earlier.</p>
+          </div>
+
+          <div class="field">
+            <span class="label">Channel</span>
+            <div class="seg" id="roleSeg" role="radiogroup">
+              <button data-role="stereo" id="roleStereo">Stereo</button>
+              <button data-role="left" id="roleLeft">Left</button>
+              <button data-role="right" id="roleRight">Right</button>
+              <button data-role="mono" id="roleMono">Mono</button>
+            </div>
+          </div>
+
+          <div class="field mac-only hidden" id="sinkField">
+            <span class="label">Output device</span>
+            <select id="sinkSelect"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speakers In Room List -->
+      <div class="card">
+        <div class="card-head">
+          <h3>Room Speakers</h3>
+          <span class="chip" id="roomCount">0 speakers</span>
+        </div>
+        <div id="roomList" class="room-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- QR Share Modal -->
+  <div id="qrModal" class="modal-backdrop hidden">
+    <div class="card modal-card">
+      <button id="closeQrBtn" class="modal-close" aria-label="Close">&times;</button>
+      <h3>Invite Speakers</h3>
+      <p class="muted">Scan with iPhone, iPad, or Android camera to instantly join this room:</p>
+      <div class="qr-container">
+        <img id="qrImg" alt="Room QR Code" />
+      </div>
+      <div class="room-share-url">
+        <code id="shareUrlText">https://...</code>
+        <button id="copyUrlBtn" class="ghost">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <video id="keepAwake" playsinline muted loop src="nosleep.mp4" class="hidden-video"></video>
+  <script src="app.js"></script>
+</body>
+</html>

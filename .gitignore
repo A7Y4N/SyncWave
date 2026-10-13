@@ -1,0 +1,6 @@
+node_modules/
+bin/
+uploads/
+tunnel.log
+.DS_Store
+*.log
